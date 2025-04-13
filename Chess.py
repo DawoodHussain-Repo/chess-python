@@ -3,8 +3,8 @@ from Board import Board, PIECES
 import os
 import keyboard
 
-CYAN = '\033[96m'  # Color for highlighting possible moves
-RESET = '\033[0m'  # Reset color
+CYAN = '\033[96m'
+RESET = '\033[0m'
 
 class Chess:
     def __init__(self):
@@ -18,6 +18,7 @@ class Chess:
         self.capturedWhite = []
         self.capturedBlack = []
         self.possibleMoves = []
+        self.enPassantTarget = None
 
     def clearScreen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
@@ -55,6 +56,11 @@ class Chess:
                 self.selectedPiece = None
                 self.possibleMoves.clear()
                 self.turn = "black" if self.turn == "white" else "white"
+
+                if self.isStalemate(self.turn):
+                    self.render()
+                    print("Stalemate! It's a draw.")
+                    self.gameOver = True
             else:
                 self.selectedPiece = None
                 self.possibleMoves.clear()
@@ -65,14 +71,34 @@ class Chess:
         movingPiece = self.board.getPieceAt(sx, sy)
         targetPiece = self.board.getPieceAt(ex, ey)
 
-        if targetPiece != ' ':
+        # En Passant Capture
+        if movingPiece.lower() == 'p' and (ex, ey) == self.enPassantTarget:
+            if self.getPieceColor(movingPiece) == "white":
+                captured = self.board.getPieceAt(ex + 1, ey)
+                self.capturedBlack.append(captured)
+                self.board.board[ex + 1][ey] = ' '
+            else:
+                captured = self.board.getPieceAt(ex - 1, ey)
+                self.capturedWhite.append(captured)
+                self.board.board[ex - 1][ey] = ' '
+
+        # Normal capture
+        elif targetPiece != ' ':
             if self.getPieceColor(targetPiece) == "white":
                 self.capturedBlack.append(targetPiece)
             else:
                 self.capturedWhite.append(targetPiece)
 
+        # Update board
         self.board.board[ex][ey] = movingPiece
         self.board.board[sx][sy] = ' '
+
+        # En Passant setup
+        if movingPiece.lower() == 'p' and abs(ex - sx) == 2:
+            self.enPassantTarget = ((sx + ex) // 2, sy)
+        else:
+            self.enPassantTarget = None
+
         self.moveHistory.append(f"{movingPiece}: {chr(65 + sy)}{8 - sx} → {chr(65 + ey)}{8 - ex}")
 
     def start(self):
@@ -86,7 +112,6 @@ class Chess:
         self.clearScreen()
         print("Game Over! Final board:")
         self.board.printBoard()
-
     def render(self):
         self.clearScreen()
         self.board.printBoard()
@@ -97,12 +122,11 @@ class Chess:
         print(f"Captured by Black: {' '.join(PIECES[p] for p in self.capturedBlack) if self.capturedBlack else 'None'}")
         print("Use WASD to move, Enter to select/move, Q to quit.")
 
-        # Highlight possible moves for the selected piece
         if self.selectedPiece:
             for move in self.possibleMoves:
                 mx, my = move
                 print(f"{CYAN}{chr(65 + my)}{8 - mx}{RESET}", end=' ')
-            print()  
+            print()
 
     def changePosition(self, newX, newY):
         newX = max(0, min(newX, 7))
@@ -115,22 +139,19 @@ class Chess:
         piece = self.board.getPieceAt(x, y)
         color = self.getPieceColor(piece)
 
-        if piece.lower() == 'p':  # Pawn moves
+        if piece.lower() == 'p':
             direction = -1 if color == "white" else 1
             startRow = 6 if color == "white" else 1
 
-            # One square ahead
             nx, ny = x + direction, y
             if 0 <= nx < 8 and self.board.getPieceAt(nx, ny) == ' ':
                 self.possibleMoves.append((nx, ny))
 
-                # Two squares ahead on first move
                 if x == startRow:
                     nx2 = nx + direction
                     if 0 <= nx2 < 8 and self.board.getPieceAt(nx2, ny) == ' ':
                         self.possibleMoves.append((nx2, ny))
 
-            # Captures diagonally
             for dy in [-1, 1]:
                 cx, cy = x + direction, y + dy
                 if 0 <= cx < 8 and 0 <= cy < 8:
@@ -138,8 +159,12 @@ class Chess:
                     if target != ' ' and self.getPieceColor(target) != color:
                         self.possibleMoves.append((cx, cy))
 
-        elif piece.lower() == 'r':  # Rook moves
-            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # Vertical and horizontal
+                    # En Passant
+                    if self.enPassantTarget == (cx, cy):
+                        self.possibleMoves.append((cx, cy))
+
+        elif piece.lower() == 'r':
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
             for dx, dy in directions:
                 nx, ny = x, y
                 while 0 <= nx + dx < 8 and 0 <= ny + dy < 8:
@@ -154,7 +179,7 @@ class Chess:
                     else:
                         break
 
-        elif piece.lower() == 'n':  # Knight moves
+        elif piece.lower() == 'n':
             knight_moves = [(-2, -1), (-2, 1), (2, -1), (2, 1), (-1, -2), (1, -2), (-1, 2), (1, 2)]
             for dx, dy in knight_moves:
                 nx, ny = x + dx, y + dy
@@ -163,8 +188,8 @@ class Chess:
                     if target == ' ' or self.getPieceColor(target) != color:
                         self.possibleMoves.append((nx, ny))
 
-        elif piece.lower() == 'b':  # Bishop moves
-            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # Diagonal directions
+        elif piece.lower() == 'b':
+            directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
             for dx, dy in directions:
                 nx, ny = x, y
                 while 0 <= nx + dx < 8 and 0 <= ny + dy < 8:
@@ -179,8 +204,9 @@ class Chess:
                     else:
                         break
 
-        elif piece.lower() == 'q':  # Queen moves
-            directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        elif piece.lower() == 'q':
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                          (-1, -1), (-1, 1), (1, -1), (1, 1)]
             for dx, dy in directions:
                 nx, ny = x, y
                 while 0 <= nx + dx < 8 and 0 <= ny + dy < 8:
@@ -195,14 +221,25 @@ class Chess:
                     else:
                         break
 
-        elif piece.lower() == 'k':  # King moves
-            directions = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        elif piece.lower() == 'k':
+            directions = [(-1, 0), (1, 0), (0, -1), (0, 1),
+                          (-1, -1), (-1, 1), (1, -1), (1, 1)]
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
                 if 0 <= nx < 8 and 0 <= ny < 8:
                     target = self.board.getPieceAt(nx, ny)
                     if target == ' ' or self.getPieceColor(target) != color:
                         self.possibleMoves.append((nx, ny))
+
+    def isStalemate(self, color):
+        for x in range(8):
+            for y in range(8):
+                piece = self.board.getPieceAt(x, y)
+                if piece != ' ' and self.getPieceColor(piece) == color:
+                    self.findPossibleMoves(x, y)
+                    if self.possibleMoves:
+                        return False
+        return True
 
 
 if __name__ == "__main__":
