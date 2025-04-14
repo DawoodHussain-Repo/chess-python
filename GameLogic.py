@@ -13,7 +13,7 @@ def isInCheck(board, color):
             break
     
     if not kingPos:
-        return False  
+        return False
     
     opponentColor = "black" if color == "white" else "white"
     for i in range(8):
@@ -37,7 +37,7 @@ def isCheckmate(board, color, enPassantTarget):
                 moves = findPossibleMoves(board, x, y, enPassantTarget)
                 for move in moves:
                     if not moveIntoCheck(board, (x, y), move):
-                        return False  
+                        return False
     
     return True
 
@@ -63,6 +63,11 @@ def moveIntoCheck(board, start, end):
     color = getPieceColor(piece)
     
     ex, ey = end
+    target = board.getPieceAt(ex, ey)
+    opponent_king = 'k' if color == "white" else 'K'
+    if target == opponent_king:
+        return True  # Prevent move that captures the king
+    
     tempBoard[ex][ey] = tempBoard[sx][sy]
     tempBoard[sx][sy] = ' '
     
@@ -77,7 +82,7 @@ def moveIntoCheck(board, start, end):
             break
     
     if not kingPos:
-        return False  
+        return False
     
     opponentColor = "black" if color == "white" else "white"
     for i in range(8):
@@ -86,6 +91,6 @@ def moveIntoCheck(board, start, end):
             if piece != ' ' and getPieceColor(piece) == opponentColor:
                 moves = calculateMoves(tempBoard, i, j)
                 if kingPos in moves:
-                    return True  
+                    return True
     
     return False

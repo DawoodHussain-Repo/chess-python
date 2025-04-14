@@ -1,10 +1,11 @@
 import copy
-from Interface import render
 from Constants import (
     CONST_PIECE_VALUES, CONST_PAWN_TABLE, CONST_KNIGHT_TABLE,
     CONST_BISHOP_TABLE, CONST_ROOK_TABLE, CONST_QUEEN_TABLE, CONST_KING_TABLE
 )
 from MoveLogic import calculateMoves, getPieceColor, findPossibleMoves
+from GameLogic import isCheckmate
+from Interface import render
 
 def flipTable(table):
     return table[::-1]
@@ -51,7 +52,11 @@ def evaluateBoard(board):
     
     return score
 
-def alphaBeta(board, depth, alpha, beta, isMaximizing):
+def alphaBeta(board, depth, alpha, beta, isMaximizing, chess):
+    opponent_color = "black" if isMaximizing else "white"
+    if isCheckmate(chess.board, opponent_color, chess.enPassantTarget):
+        return float('inf') if isMaximizing else float('-inf')
+    
     if depth == 0:
         return evaluateBoard(board)
     
@@ -64,15 +69,16 @@ def alphaBeta(board, depth, alpha, beta, isMaximizing):
                     moves = calculateMoves(board, i, j)
                     for move in moves:
                         ex, ey = move
-                        tempBoard = copy.deepcopy(board)
-                        tempBoard[ex][ey] = tempBoard[i][j]
-                        tempBoard[i][j] = ' '
-                        
-                        eval = alphaBeta(tempBoard, depth - 1, alpha, beta, False)
-                        maxEval = max(maxEval, eval)
-                        alpha = max(alpha, eval)
-                        if beta <= alpha:
-                            break
+                        if board[ex][ey] != 'k': 
+                            tempBoard = copy.deepcopy(board)
+                            tempBoard[ex][ey] = tempBoard[i][j]
+                            tempBoard[i][j] = ' '
+                            
+                            eval = alphaBeta(tempBoard, depth - 1, alpha, beta, False, chess)
+                            maxEval = max(maxEval, eval)
+                            alpha = max(alpha, eval)
+                            if beta <= alpha:
+                                break
                     if beta <= alpha:
                         break
             if beta <= alpha:
@@ -87,15 +93,16 @@ def alphaBeta(board, depth, alpha, beta, isMaximizing):
                     moves = calculateMoves(board, i, j)
                     for move in moves:
                         ex, ey = move
-                        tempBoard = copy.deepcopy(board)
-                        tempBoard[ex][ey] = tempBoard[i][j]
-                        tempBoard[i][j] = ' '
-                        
-                        eval = alphaBeta(tempBoard, depth - 1, alpha, beta, True)
-                        minEval = min(minEval, eval)
-                        beta = min(beta, eval)
-                        if beta <= alpha:
-                            break
+                        if board[ex][ey] != 'K': 
+                            tempBoard = copy.deepcopy(board)
+                            tempBoard[ex][ey] = tempBoard[i][j]
+                            tempBoard[i][j] = ' '
+                            
+                            eval = alphaBeta(tempBoard, depth - 1, alpha, beta, True, chess)
+                            minEval = min(minEval, eval)
+                            beta = min(beta, eval)
+                            if beta <= alpha:
+                                break
                     if beta <= alpha:
                         break
             if beta <= alpha:
@@ -106,6 +113,7 @@ def makeAiMove(chess):
     bestScore = float('-inf') if chess.turn == "white" else float('inf')
     bestMove = None
     bestPiece = None
+    opponent_king = 'k' if chess.turn == "white" else 'K'
     
     for i in range(8):
         for j in range(8):
@@ -115,20 +123,18 @@ def makeAiMove(chess):
                 legalMoves = [move for move in moves if not chess.moveIntoCheck((i, j), move)]
                 
                 for move in legalMoves:
-                    tempBoard = copy.deepcopy(chess.board.board)
                     ex, ey = move
-                    tempBoard[ex][ey] = tempBoard[i][j]
-                    tempBoard[i][j] = ' '
-                    
-                    if chess.turn == "white":
-                        score = alphaBeta(tempBoard, chess.aiDifficulty - 1, float('-inf'), float('inf'), False)
-                        if score > bestScore:
+                    if chess.board.getPieceAt(ex, ey) != opponent_king:
+                        tempBoard = copy.deepcopy(chess.board.board)
+                        tempBoard[ex][ey] = tempBoard[i][j]
+                        tempBoard[i][j] = ' '
+                        
+                        score = alphaBeta(tempBoard, chess.aiDifficulty - 1, float('-inf'), float('inf'), chess.turn != "white", chess)
+                        if chess.turn == "white" and score > bestScore:
                             bestScore = score
                             bestMove = move
                             bestPiece = (i, j)
-                    else:
-                        score = alphaBeta(tempBoard, chess.aiDifficulty - 1, float('-inf'), float('inf'), True)
-                        if score < bestScore:
+                        elif chess.turn == "black" and score < bestScore:
                             bestScore = score
                             bestMove = move
                             bestPiece = (i, j)
@@ -155,11 +161,11 @@ def makeAiMove(chess):
         if chess.isCheckmate(chess.turn):
             chess.checkmate = True
             render(chess)
-            winner = "White" if chess.turn == "black" else "Black"
+            winner = "White" if chess.turn == "black" else "Yellow"
             print(f"Checkmate! {winner} wins!")
             chess.gameOver = True
         elif chess.isStalemate(chess.turn):
-            chess.render()
+            render(chess)
             print("Stalemate! It's a draw.")
             chess.gameOver = True
     else:

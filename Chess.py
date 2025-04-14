@@ -75,3 +75,4 @@ if __name__ == "__main__":
     
     chess = Chess(playAs=playAs, difficulty=difficulty)
     start(chess)
+

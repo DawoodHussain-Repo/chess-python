@@ -37,4 +37,4 @@ class Board:
                 else:
                     print(f"{color} {piece_display} {CONST_RESET}", end='')
             print(f" {8-i}")
-        print("  A B C D E F G H")
+        print("   A  B  C  D  E  F  G  H")
