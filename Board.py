@@ -1,20 +1,13 @@
-import keyboard
-import os
-import time
+from Constants import CONST_WHITE, CONST_YELLOW, CONST_RESET
 
-PEACH = '\033[93m'
-RESET = '\033[0m'
-CYAN = '\033[96m'
-PIECES = {
-    'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
-    'R': '♜', 'N': '♞', 'B': '♝', 'Q': '♛', 'K': '♚', 'P': '♟',
-    ' ': '□'
+CONST_PIECES = {
+    'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
+    'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔',
+    ' ': ' '
 }
 
 class Board:
     def __init__(self):
-        self.rows = 8
-        self.cols = 8
         self.board = [
             ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
             ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
@@ -27,32 +20,21 @@ class Board:
         ]
         self.cursorRow = 0
         self.cursorCol = 0
-    
+
+    def getPieceAt(self, row, col):
+        return self.board[row][col]
+
     def printBoard(self):
-        os.system('cls' if os.name == 'nt' else 'clear')  
-        print(f"  {'-' * 27}")
-        for i in range(self.rows):
-            print(f"{8 - i} ", end='')
-            print(f"| ", end='')
-            for j in range(self.cols):
-                cell = self.board[i][j]
-                symbol = PIECES[cell]
-               
+        print("  A B C D E F G H")
+        for i in range(8):
+            print(f"{8-i} ", end='')
+            for j in range(8):
+                piece = self.board[i][j]
+                color = CONST_WHITE if piece.isupper() else CONST_YELLOW if piece.islower() else ''
+                piece_display = CONST_PIECES[piece]
                 if i == self.cursorRow and j == self.cursorCol:
-                    print(f"{CYAN}{symbol:2}\033[0m ", end='') 
-                elif cell == ' ' and (i + j) % 2 == 0:
-                    print(f"{PEACH}{symbol:2}{RESET} ", end='')
-                elif cell == ' ':
-                    print(f"{RESET}{symbol:2}{RESET} ", end='')
-                elif cell.islower():
-                    print(f"{PEACH}{symbol:2}{RESET} ", end='')
+                    print(f"{color}[{piece_display}]{CONST_RESET}", end='')
                 else:
-                    print(f"{symbol:2} ", end='')
-            print(f"|")
-        print(f"  {'-' * 27}")
-        print("    A  B  C  D  E  F  G  H")
-        print(f"Cursor at: {chr(65 + self.cursorCol)}{8 - self.cursorRow}")
-    def getPiece(self):
-        return self.board[self.cursorRow][self.cursorCol]
-    def getPieceAt(self,x,y):
-        return self.board[x][y]
+                    print(f"{color} {piece_display} {CONST_RESET}", end='')
+            print(f" {8-i}")
+        print("  A B C D E F G H")
